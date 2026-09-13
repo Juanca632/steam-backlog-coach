@@ -12,6 +12,7 @@ class GameSummary(BaseModel):
     name: str
     playtime_forever_minutes: int
     state: BacklogState
+    header_image: str
 
 
 class GenreGroup(BaseModel):

@@ -28,29 +28,74 @@ def _mock_complete(monkeypatch: pytest.MonkeyPatch, *replies: str) -> None:
     monkeypatch.setattr(recommend_module.llm_client, "complete", lambda _prompt: next(responses))
 
 
-def test_recommend_returns_the_game_the_llm_picks(client, db_session, monkeypatch):
-    _add_game(db_session, 1, "Hades", minutes=60, genres="Roguelike")
-    _mock_complete(monkeypatch, '{"appid": 1, "reason": "Short runs fit your time."}')
-
-    response = client.post("/recommend", json={"available_time_min": 30, "mood": "relaxed"})
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body == {"appid": 1, "name": "Hades", "reason": "Short runs fit your time."}
+def _mock_store_search(monkeypatch: pytest.MonkeyPatch, results: dict[str, dict | None]) -> None:
+    monkeypatch.setattr(
+        recommend_module.store_search, "find_game_by_title", lambda title: results.get(title)
+    )
 
 
-def test_recommend_retries_once_on_invalid_appid(client, db_session, monkeypatch):
+def test_recommend_returns_the_backlog_pick_the_llm_chose(client, db_session, monkeypatch):
     _add_game(db_session, 1, "Hades", minutes=60, genres="Roguelike")
     _mock_complete(
         monkeypatch,
-        '{"appid": 999, "reason": "made up game"}',
-        '{"appid": 1, "reason": "Correcting to the real one."}',
+        '{"backlog_pick": {"appid": 1, "reason": "Short runs fit your time."}, '
+        '"discovery_picks": []}',
     )
 
     response = client.post("/recommend", json={"available_time_min": 30, "mood": "relaxed"})
 
     assert response.status_code == 200
-    assert response.json()["appid"] == 1
+    picks = response.json()["picks"]
+    assert len(picks) == 1
+    assert picks[0]["appid"] == 1
+    assert picks[0]["name"] == "Hades"
+    assert picks[0]["source"] == "library"
+    assert "1/header.jpg" in picks[0]["header_image"]
+
+
+def test_recommend_includes_resolved_discovery_picks(client, db_session, monkeypatch):
+    _add_game(db_session, 1, "Hades", minutes=60, genres="Roguelike")
+    _mock_complete(
+        monkeypatch,
+        '{"backlog_pick": {"appid": 1, "reason": "fits"}, '
+        '"discovery_picks": ['
+        '{"title": "Dead Cells", "reason": "similar vibe"}, '
+        '{"title": "Not A Real Game Xyzzy", "reason": "made up"}'
+        "]}",
+    )
+    _mock_store_search(
+        monkeypatch,
+        {"Dead Cells": {"appid": 588650, "name": "Dead Cells"}, "Not A Real Game Xyzzy": None},
+    )
+
+    response = client.post("/recommend", json={"available_time_min": 30, "mood": "relaxed"})
+
+    assert response.status_code == 200
+    picks = response.json()["picks"]
+    assert len(picks) == 2
+    assert picks[0]["source"] == "library"
+    assert picks[1] == {
+        "appid": 588650,
+        "name": "Dead Cells",
+        "reason": "similar vibe",
+        "source": "discovery",
+        "header_image": "https://cdn.akamai.steamstatic.com/steam/apps/588650/header.jpg",
+    }
+
+
+def test_recommend_retries_once_on_invalid_backlog_appid(client, db_session, monkeypatch):
+    _add_game(db_session, 1, "Hades", minutes=60, genres="Roguelike")
+    _mock_complete(
+        monkeypatch,
+        '{"backlog_pick": {"appid": 999, "reason": "made up game"}, "discovery_picks": []}',
+        '{"backlog_pick": {"appid": 1, "reason": "Correcting to the real one."}, '
+        '"discovery_picks": []}',
+    )
+
+    response = client.post("/recommend", json={"available_time_min": 30, "mood": "relaxed"})
+
+    assert response.status_code == 200
+    assert response.json()["picks"][0]["appid"] == 1
 
 
 def test_recommend_retries_once_on_malformed_json(client, db_session, monkeypatch):
@@ -58,21 +103,21 @@ def test_recommend_retries_once_on_malformed_json(client, db_session, monkeypatc
     _mock_complete(
         monkeypatch,
         "not json at all",
-        '{"appid": 1, "reason": "Here you go."}',
+        '{"backlog_pick": {"appid": 1, "reason": "Here you go."}, "discovery_picks": []}',
     )
 
     response = client.post("/recommend", json={"available_time_min": 30, "mood": "relaxed"})
 
     assert response.status_code == 200
-    assert response.json()["appid"] == 1
+    assert response.json()["picks"][0]["appid"] == 1
 
 
 def test_recommend_fails_after_exhausting_retries(client, db_session, monkeypatch):
     _add_game(db_session, 1, "Hades", minutes=60, genres="Roguelike")
     _mock_complete(
         monkeypatch,
-        '{"appid": 999, "reason": "made up"}',
-        '{"appid": 998, "reason": "still made up"}',
+        '{"backlog_pick": {"appid": 999, "reason": "made up"}, "discovery_picks": []}',
+        '{"backlog_pick": {"appid": 998, "reason": "still made up"}, "discovery_picks": []}',
     )
 
     response = client.post("/recommend", json={"available_time_min": 30, "mood": "relaxed"})
@@ -82,7 +127,11 @@ def test_recommend_fails_after_exhausting_retries(client, db_session, monkeypatc
 
 def test_recommend_excludes_finished_games_from_candidates(client, db_session, monkeypatch):
     _add_game(db_session, 1, "Finished Game", minutes=50, genres="Indie", achievements=(10, 10))
-    _mock_complete(monkeypatch, '{"appid": 1, "reason": "should not be reached"}')
+    _mock_complete(
+        monkeypatch,
+        '{"backlog_pick": {"appid": 1, "reason": "should not be reached"}, '
+        '"discovery_picks": []}',
+    )
 
     response = client.post("/recommend", json={"available_time_min": 30, "mood": "relaxed"})
 

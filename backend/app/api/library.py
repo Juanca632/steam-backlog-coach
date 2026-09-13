@@ -25,6 +25,7 @@ from app.schemas import (
     StateCounts,
     StatsResponse,
 )
+from app.steam.images import header_image_url
 
 router = APIRouter()
 
@@ -41,6 +42,7 @@ def get_library(db: Session = Depends(get_db)) -> LibraryResponse:
             name=game.name,
             playtime_forever_minutes=game.owned.playtime_forever_minutes,
             state=classify(game.owned, game.details, game.achievements),
+            header_image=header_image_url(game.appid),
         )
         for genre in _genre_names(game.details):
             by_genre[genre].append(summary)

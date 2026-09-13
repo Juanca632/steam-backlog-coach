@@ -108,20 +108,34 @@ config-driven (`LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL`).
   against the real synced library.
 - **Phase 3 — AI recommendation**: done. `llm/prompt.py` builds a prompt listing every
   candidate backlog game (untouched/in_progress only — finished games are excluded)
-  and requires a JSON reply with one of the listed appids. `llm/client.py` dispatches
-  on `settings.llm_provider` to either the Anthropic SDK or the Gemini SDK
-  (`google-genai`) — Gemini has a free tier, useful for local dev without spending
-  API credits. `llm/validate.py` checks the returned appid against the real library;
-  `POST /recommend` retries once with the error fed back on an invalid appid or
-  malformed JSON, then fails with 502. Covered by unit tests (prompt, validate,
-  provider dispatch) and integration tests with the LLM call mocked (happy path,
-  invalid-appid retry, malformed-JSON retry, exhausted retries, no-candidates 404).
-  Verified end-to-end against the real Gemini API (`python -m scripts.sync`'s real
-  library + a live `/recommend` call returned a real, correctly-reasoned pick). Note:
-  Gemini model names get retired fast — the API's 404 error names the current
-  replacement model when that happens.
-- **Phase 4 — Frontend** (next): Vite scaffold, two screens, `api/client.ts`.
-- **Phase 5 — Polish**: README screenshots, sync error handling.
+  and asks for a JSON reply with two things: a `backlog_pick` appid from that exact
+  list, and a few `discovery_picks` (real Steam game titles the player doesn't own,
+  by genre affinity). `llm/client.py` dispatches on `settings.llm_provider` to either
+  the Anthropic SDK or the Gemini SDK (`google-genai`) — Gemini has a free tier,
+  useful for local dev without spending API credits. `POST /recommend` validates
+  `backlog_pick.appid` against the real library (`llm/validate.py`), retrying once
+  with the error fed back on an invalid appid or malformed JSON before failing with
+  502; each `discovery_picks` title is separately resolved against the live Steam
+  store catalog (`steam/store_search.py`, unofficial `storesearch` endpoint) and
+  silently dropped if it doesn't match a real game — so every returned appid, backlog
+  or discovery, is real, never invented, just checked against two different sources.
+  Cover art for every returned game (owned or not) is a computed Akamai CDN URL
+  (`steam/images.py`), no extra API call needed. Covered by unit tests (prompt,
+  validate, provider dispatch) and integration tests with the LLM and store search
+  mocked (happy path, discovery resolution/drop, invalid-appid retry, malformed-JSON
+  retry, exhausted retries, no-candidates 404). Verified end-to-end against the real
+  Gemini API and the real Steam store search. Note: Gemini model names get retired
+  fast — the API's 404 error names the current replacement model when that happens.
+- **Phase 4 — Frontend**: done. Vite + React + TypeScript (`frontend/`), single page
+  (no router — `App.tsx` just stacks the two sections). `pages/WhatToPlay.tsx` is the
+  main section: free-text mood + available-time inputs, results shown as a
+  Steam/Netflix-style grid of cards with cover art, badged "From your backlog" vs
+  "New for you". `pages/LibraryDashboard.tsx` (backlog grouped by genre, with
+  thumbnails) sits below it on the same page. `api/client.ts` types mirror the
+  backend's Pydantic schemas by hand. Backend has `CORSMiddleware` open for
+  `http://localhost:5173` (`app/main.py`). Verified by running both dev servers and
+  a live `/recommend` call through the real UI flow.
+- **Phase 5 — Polish** (next): README screenshots, sync error handling.
 
 Phase 1 was the fragile core; it's solid now, verified end-to-end (mocked network for
 edge cases + one real sync run), so later phases can build on it.
