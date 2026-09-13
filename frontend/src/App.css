@@ -1,0 +1,274 @@
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+.app-header {
+  margin-bottom: 24px;
+}
+
+.app-header h1 {
+  font-size: 22px;
+  margin: 0;
+}
+
+.status {
+  color: var(--text);
+  opacity: 0.7;
+}
+
+.status-error {
+  color: #dc2626;
+  opacity: 1;
+}
+
+/* Recommend hero */
+
+.recommend-hero {
+  margin-bottom: 40px;
+}
+
+.recommend-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.recommend-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.mood-field {
+  flex: 1 1 320px;
+}
+
+.time-field {
+  flex: 0 0 120px;
+}
+
+.recommend-form input {
+  font: inherit;
+  font-size: 15px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-raised);
+  color: var(--text-h);
+}
+
+.recommend-form button {
+  font: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 11px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.recommend-form button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Game grid (Netflix/Steam style cards) */
+
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.game-card {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease;
+}
+
+.game-card:hover {
+  transform: translateY(-2px);
+}
+
+.game-card img {
+  width: 100%;
+  aspect-ratio: 460 / 215;
+  object-fit: cover;
+  display: block;
+  background: var(--border);
+}
+
+.card-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.badge-library {
+  background: rgba(124, 58, 237, 0.85);
+}
+
+.badge-discovery {
+  background: rgba(22, 163, 74, 0.85);
+}
+
+.card-body {
+  padding: 10px 12px 14px;
+}
+
+.card-body h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--text-h);
+}
+
+.card-body p {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.8;
+  line-height: 1.4;
+}
+
+/* Backlog section */
+
+.backlog-section {
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+}
+
+.backlog-section h2 {
+  font-size: 18px;
+  margin: 0 0 16px;
+}
+
+.dashboard .totals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.total-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.total-count {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.total-label {
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.total-untouched .total-count {
+  color: var(--untouched);
+}
+.total-in_progress .total-count {
+  color: var(--in-progress);
+}
+.total-finished .total-count {
+  color: var(--finished);
+}
+
+.genre-group {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+}
+
+.genre-group summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-h);
+  padding: 4px 0;
+}
+
+.genre-count {
+  font-weight: 400;
+  opacity: 0.6;
+}
+
+.game-list {
+  list-style: none;
+  margin: 8px 0 4px;
+  padding: 0;
+}
+
+.game-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.game-thumb {
+  width: 46px;
+  height: 21px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+  background: var(--border);
+}
+
+.game-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-playtime {
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-state {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+}
+
+.state-untouched .game-state {
+  color: var(--untouched);
+}
+.state-in_progress .game-state {
+  color: var(--in-progress);
+}
+.state-finished .game-state {
+  color: var(--finished);
+}

@@ -90,12 +90,52 @@ config-driven (`LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL`).
 ## Roadmap (current position)
 
 - **Phase 0 — Setup**: repo, folder structure, `.env.example` — done. `config.py` and
-  `GET /health` are the only working code; everything else is a documented stub.
-- **Phase 1 — Data ingestion** (next): `models.py` (Game, OwnedGame, AppDetails,
-  PlayerAchievements, SyncState), `db.py`, the two Steam clients, resumable `sync.py`.
-- **Phase 2 — Backlog logic**: `classifier.py`, `GET /library` and `GET /stats`.
-- **Phase 3 — AI recommendation**: `prompt.py`, `client.py`, `validate.py`, `POST /recommend`.
-- **Phase 4 — Frontend**: Vite scaffold, two screens, `api/client.ts`.
-- **Phase 5 — Polish**: README screenshots, sync error handling.
+  `GET /health` were the only working code at this point.
+- **Phase 1 — Data ingestion**: done. `models.py` (Game, OwnedGame, AppDetails,
+  PlayerAchievements, SyncState), `db.py`, both Steam clients, resumable `sync.py`.
+  Verified against real Steam data (`python -m scripts.sync` with real credentials):
+  synced a real library, and confirmed the core property — running the sync twice in
+  a row hits the rate-limited Store API exactly once total, no duplicate rows.
+  `web_api.get_player_achievements` treats HTTP 403 ("Profile is not public" — the
+  "game details" privacy setting) the same as HTTP 400 (no achievement schema): both
+  return `None` instead of raising.
+- **Phase 2 — Backlog logic**: done. `classifier.py` labels each owned game from
+  playtime, achievement ratio (when available), and genre-tuned playtime thresholds
+  (`LONG_GENRES` / `SHORT_GENRES`) for the games with no achievement schema at all.
+  `GET /library` (grouped by genre) and `GET /stats` (totals per state and per genre)
+  are wired into `main.py`. Verified with unit tests on the classifier's decision
+  table and integration tests against an in-memory SQLite DB, plus a manual check
+  against the real synced library.
+- **Phase 3 — AI recommendation**: done. `llm/prompt.py` builds a prompt listing every
+  candidate backlog game (untouched/in_progress only — finished games are excluded)
+  and asks for a JSON reply with two things: a `backlog_pick` appid from that exact
+  list, and a few `discovery_picks` (real Steam game titles the player doesn't own,
+  by genre affinity). `llm/client.py` dispatches on `settings.llm_provider` to either
+  the Anthropic SDK or the Gemini SDK (`google-genai`) — Gemini has a free tier,
+  useful for local dev without spending API credits. `POST /recommend` validates
+  `backlog_pick.appid` against the real library (`llm/validate.py`), retrying once
+  with the error fed back on an invalid appid or malformed JSON before failing with
+  502; each `discovery_picks` title is separately resolved against the live Steam
+  store catalog (`steam/store_search.py`, unofficial `storesearch` endpoint) and
+  silently dropped if it doesn't match a real game — so every returned appid, backlog
+  or discovery, is real, never invented, just checked against two different sources.
+  Cover art for every returned game (owned or not) is a computed Akamai CDN URL
+  (`steam/images.py`), no extra API call needed. Covered by unit tests (prompt,
+  validate, provider dispatch) and integration tests with the LLM and store search
+  mocked (happy path, discovery resolution/drop, invalid-appid retry, malformed-JSON
+  retry, exhausted retries, no-candidates 404). Verified end-to-end against the real
+  Gemini API and the real Steam store search. Note: Gemini model names get retired
+  fast — the API's 404 error names the current replacement model when that happens.
+- **Phase 4 — Frontend**: done. Vite + React + TypeScript (`frontend/`), single page
+  (no router — `App.tsx` just stacks the two sections). `pages/WhatToPlay.tsx` is the
+  main section: free-text mood + available-time inputs, results shown as a
+  Steam/Netflix-style grid of cards with cover art, badged "From your backlog" vs
+  "New for you". `pages/LibraryDashboard.tsx` (backlog grouped by genre, with
+  thumbnails) sits below it on the same page. `api/client.ts` types mirror the
+  backend's Pydantic schemas by hand. Backend has `CORSMiddleware` open for
+  `http://localhost:5173` (`app/main.py`). Verified by running both dev servers and
+  a live `/recommend` call through the real UI flow.
+- **Phase 5 — Polish** (next): README screenshots, sync error handling.
 
-Phase 1 is the fragile core; it should be solid before later phases build on it.
+Phase 1 was the fragile core; it's solid now, verified end-to-end (mocked network for
+edge cases + one real sync run), so later phases can build on it.

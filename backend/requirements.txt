@@ -6,9 +6,9 @@ pydantic-settings
 httpx
 python-dotenv
 
-# LLM (pick one when we reach Phase 3)
-# anthropic
-# openai
+# LLM providers (config-driven via LLM_PROVIDER — see llm/client.py)
+anthropic
+google-genai
 
 # dev
 pytest
