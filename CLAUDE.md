@@ -90,12 +90,26 @@ config-driven (`LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL`).
 ## Roadmap (current position)
 
 - **Phase 0 — Setup**: repo, folder structure, `.env.example` — done. `config.py` and
-  `GET /health` are the only working code; everything else is a documented stub.
-- **Phase 1 — Data ingestion** (next): `models.py` (Game, OwnedGame, AppDetails,
-  PlayerAchievements, SyncState), `db.py`, the two Steam clients, resumable `sync.py`.
-- **Phase 2 — Backlog logic**: `classifier.py`, `GET /library` and `GET /stats`.
-- **Phase 3 — AI recommendation**: `prompt.py`, `client.py`, `validate.py`, `POST /recommend`.
+  `GET /health` were the only working code at this point.
+- **Phase 1 — Data ingestion**: done. `models.py` (Game, OwnedGame, AppDetails,
+  PlayerAchievements, SyncState), `db.py`, both Steam clients, resumable `sync.py`.
+  Verified against real Steam data (`python -m scripts.sync` with real credentials):
+  synced a real library, and confirmed the core property — running the sync twice in
+  a row hits the rate-limited Store API exactly once total, no duplicate rows.
+  `web_api.get_player_achievements` treats HTTP 403 ("Profile is not public" — the
+  "game details" privacy setting) the same as HTTP 400 (no achievement schema): both
+  return `None` instead of raising.
+- **Phase 2 — Backlog logic**: done. `classifier.py` labels each owned game from
+  playtime, achievement ratio (when available), and genre-tuned playtime thresholds
+  (`LONG_GENRES` / `SHORT_GENRES`) for the games with no achievement schema at all.
+  `GET /library` (grouped by genre) and `GET /stats` (totals per state and per genre)
+  are wired into `main.py`. Verified with unit tests on the classifier's decision
+  table and integration tests against an in-memory SQLite DB, plus a manual check
+  against the real synced library.
+- **Phase 3 — AI recommendation** (next): `prompt.py`, `client.py`, `validate.py`,
+  `POST /recommend`.
 - **Phase 4 — Frontend**: Vite scaffold, two screens, `api/client.ts`.
 - **Phase 5 — Polish**: README screenshots, sync error handling.
 
-Phase 1 is the fragile core; it should be solid before later phases build on it.
+Phase 1 was the fragile core; it's solid now, verified end-to-end (mocked network for
+edge cases + one real sync run), so later phases can build on it.

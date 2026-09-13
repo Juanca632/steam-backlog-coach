@@ -2,7 +2,10 @@
 
 from fastapi import FastAPI
 
+from app.api import library
+
 app = FastAPI(title="Steam Backlog Coach")
+app.include_router(library.router)
 
 
 @app.get("/health")
@@ -10,7 +13,4 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-# Phase 2/3: include routers
-# from app.api import library, recommend
-# app.include_router(library.router)
-# app.include_router(recommend.router)
+# Phase 3: from app.api import recommend; app.include_router(recommend.router)
