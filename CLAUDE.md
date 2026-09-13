@@ -106,9 +106,21 @@ config-driven (`LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL`).
   are wired into `main.py`. Verified with unit tests on the classifier's decision
   table and integration tests against an in-memory SQLite DB, plus a manual check
   against the real synced library.
-- **Phase 3 — AI recommendation** (next): `prompt.py`, `client.py`, `validate.py`,
-  `POST /recommend`.
-- **Phase 4 — Frontend**: Vite scaffold, two screens, `api/client.ts`.
+- **Phase 3 — AI recommendation**: done. `llm/prompt.py` builds a prompt listing every
+  candidate backlog game (untouched/in_progress only — finished games are excluded)
+  and requires a JSON reply with one of the listed appids. `llm/client.py` dispatches
+  on `settings.llm_provider` to either the Anthropic SDK or the Gemini SDK
+  (`google-genai`) — Gemini has a free tier, useful for local dev without spending
+  API credits. `llm/validate.py` checks the returned appid against the real library;
+  `POST /recommend` retries once with the error fed back on an invalid appid or
+  malformed JSON, then fails with 502. Covered by unit tests (prompt, validate,
+  provider dispatch) and integration tests with the LLM call mocked (happy path,
+  invalid-appid retry, malformed-JSON retry, exhausted retries, no-candidates 404).
+  Verified end-to-end against the real Gemini API (`python -m scripts.sync`'s real
+  library + a live `/recommend` call returned a real, correctly-reasoned pick). Note:
+  Gemini model names get retired fast — the API's 404 error names the current
+  replacement model when that happens.
+- **Phase 4 — Frontend** (next): Vite scaffold, two screens, `api/client.ts`.
 - **Phase 5 — Polish**: README screenshots, sync error handling.
 
 Phase 1 was the fragile core; it's solid now, verified end-to-end (mocked network for
