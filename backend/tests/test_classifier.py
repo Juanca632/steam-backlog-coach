@@ -27,7 +27,7 @@ def test_no_genre_no_achievements_below_default_threshold_is_in_progress():
 
 
 def test_no_genre_no_achievements_above_default_threshold_is_finished():
-    assert classify(_owned(600), None, None) == "finished"
+    assert classify(_owned(900), None, None) == "finished"
 
 
 def test_roguelike_short_playtime_counts_as_finished():
@@ -51,4 +51,18 @@ def test_low_achievement_ratio_is_in_progress_even_with_long_playtime():
 
 
 def test_achievements_with_zero_total_falls_back_to_playtime():
-    assert classify(_owned(600), None, _achievements(0, 0)) == "finished"
+    assert classify(_owned(900), None, _achievements(0, 0)) == "finished"
+
+
+def test_live_service_game_never_finishes_on_playtime_alone():
+    assert (
+        classify(_owned(100_000), _details("Action, Casual, Massively Multiplayer"), None)
+        == "in_progress"
+    )
+
+
+def test_live_service_game_can_still_finish_via_achievements():
+    assert (
+        classify(_owned(100), _details("Massively Multiplayer"), _achievements(9, 10))
+        == "finished"
+    )

@@ -13,6 +13,11 @@ play when a game has no achievement schema at all, since that's the only
 case where playtime is all we have. This is deliberately genre-tuned rather
 than one fixed number: 2h in a roguelike is a normal amount of engagement,
 2h in an 80h RPG barely counts as started.
+
+Live-service / "Massively Multiplayer" games (Fall Guys, etc.) have no
+completion state at all, so playtime alone can never mark them "finished" -
+only a genuine achievement ratio can. Absent achievements, they cap at
+"in_progress" no matter how many hours are logged.
 """
 
 from typing import Literal
@@ -24,9 +29,13 @@ BacklogState = Literal["untouched", "in_progress", "finished"]
 # Genres where "finished" plausibly means dozens of hours, vs. genres where
 # a single sitting can be a complete playthrough (or several).
 LONG_GENRES = {"rpg", "strategy", "simulation"}
-SHORT_GENRES = {"roguelike", "casual"}
+SHORT_GENRES = {"roguelike"}
 
-DEFAULT_SUBSTANTIAL_MINUTES = 600  # 10h
+# Games in these genres have no end state to reach - "Casual" describes
+# session length, not a game you can complete, and gets misread as one.
+LIVE_SERVICE_GENRES = {"massively multiplayer"}
+
+DEFAULT_SUBSTANTIAL_MINUTES = 900  # 15h
 LONG_SUBSTANTIAL_MINUTES = 2400  # 40h
 SHORT_SUBSTANTIAL_MINUTES = 120  # 2h
 
@@ -46,8 +55,18 @@ def classify(
         ratio = achievements.unlocked / achievements.total
         return "finished" if ratio >= FINISHED_ACHIEVEMENT_RATIO else "in_progress"
 
+    if _is_live_service(details):
+        return "in_progress"
+
     threshold = _substantial_minutes(details)
     return "finished" if owned.playtime_forever_minutes >= threshold else "in_progress"
+
+
+def _is_live_service(details: AppDetails | None) -> bool:
+    if details is None or not details.genres:
+        return False
+    genres = {g.strip().lower() for g in details.genres.split(",")}
+    return bool(genres & LIVE_SERVICE_GENRES)
 
 
 def _substantial_minutes(details: AppDetails | None) -> int:
